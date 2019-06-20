@@ -27,11 +27,26 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.TextView;
 
+import java.util.HashMap;
+
 public class TourMap extends View {
 
     private Bitmap mapImage;
-    private CircularLinkedList list = new CircularLinkedList();
+    private CircularLinkedList[] allList = {new CircularLinkedList(), new CircularLinkedList(), new CircularLinkedList()};
+    private int curList = 0;
+    private CircularLinkedList list = allList[curList];
     private String insertMode = "Add";
+
+    private void setList() {
+        if (insertMode.equals("Closest")) {
+            curList = 1;
+        } else if (insertMode.equals("Smallest")) {
+            curList = 2;
+        } else {
+            curList = 0;
+        }
+        list = allList[curList];
+    }
 
     public TourMap(Context context) {
         super(context);
@@ -46,11 +61,6 @@ public class TourMap extends View {
         canvas.drawBitmap(mapImage, 0, 0, null);
         Paint pointPaint = new Paint();
         pointPaint.setColor(Color.RED);
-        /**
-         **
-         **  YOUR CODE GOES HERE
-         **
-         **/
         for (Point p : list) {
             /**
              **
@@ -64,6 +74,40 @@ public class TourMap extends View {
          **  YOUR CODE GOES HERE
          **
          **/
+        Paint[] linePaint = {new Paint(), new Paint(), new Paint()};
+        for(Paint paint:linePaint) paint.setStrokeWidth(5);
+        linePaint[0].setColor(Color.BLACK);
+        linePaint[1].setColor(Color.GREEN);
+        linePaint[2].setColor(Color.BLUE);
+        if (insertMode.equals("All")) {
+            for (int i=0;i<3;++i) {
+                Point prev = null;
+                for (Point p : allList[i]) {
+                    if(prev != null) {
+                        canvas.drawLine(prev.x,prev.y,p.x,p.y,linePaint[i]);
+                    }
+                    prev = p;
+                }
+            }
+        } else {
+            Point prev = null;
+            for (Point p : list) {
+                /**
+                 **
+                 **  YOUR CODE GOES HERE
+                 **
+                 **/
+                if(prev != null) {
+                    canvas.drawLine(prev.x,prev.y,p.x,p.y,linePaint[curList]);
+                }
+                prev = p;
+            }
+        }
+        /**
+         **
+         **  YOUR CODE GOES HERE
+         **
+         **/
     }
 
     @Override
@@ -71,16 +115,17 @@ public class TourMap extends View {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 Point p = new Point((int) event.getX(), (int)event.getY());
-                if (insertMode.equals("Closest")) {
-                    list.insertNearest(p);
-                } else if (insertMode.equals("Smallest")) {
-                    list.insertSmallest(p);
-                } else {
-                    list.insertBeginning(p);
-                }
+                allList[0].insertBeginning(p);
+                allList[1].insertNearest(p);
+                allList[2].insertSmallest(p);
                 TextView message = (TextView) ((Activity) getContext()).findViewById(R.id.game_status);
                 if (message != null) {
-                    message.setText(String.format("Tour length is now %.2f", list.totalDistance()));
+                    if(insertMode.equals("All")) {
+                        message.setText(String.format("Tour length is now %.2f[Beginning], %.2f[Closet], %.2f[Smallest]",
+                                allList[0].totalDistance(),allList[1].totalDistance(),allList[2].totalDistance()));
+                    } else {
+                        message.setText(String.format("Tour length is now %.2f", list.totalDistance()));
+                    }
                 }
                 invalidate();
                 return true;
@@ -89,11 +134,12 @@ public class TourMap extends View {
     }
 
     public void reset() {
-        list.reset();
+        for(CircularLinkedList l:allList) l.reset();
         invalidate();
     }
 
     public void setInsertMode(String mode) {
         insertMode = mode;
+        setList();
     }
 }
