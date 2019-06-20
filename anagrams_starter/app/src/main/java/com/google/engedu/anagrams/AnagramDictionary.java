@@ -34,19 +34,32 @@ public class AnagramDictionary {
     private ArrayList<String> wordList = new ArrayList<>();
     private HashSet<String> wordSet = new HashSet<>();
     private HashMap<String, ArrayList<String>> lettersToWord = new HashMap<>();
+    private HashMap<Integer, ArrayList<String>> sizeToWords = new HashMap<>();
+    private int wordLength = DEFAULT_WORD_LENGTH;
 
     public AnagramDictionary(Reader reader) throws IOException {
         BufferedReader in = new BufferedReader(reader);
         String line;
         while((line = in.readLine()) != null) {
             String word = line.trim();
-            wordList.add(word);
             wordSet.add(word);
             String key = sortLetters(word);
             if (lettersToWord.containsKey(key)) {
                 lettersToWord.get(key).add(word);
             } else {
-                lettersToWord.put(key,new ArrayList<String>());
+                lettersToWord.put(key,new ArrayList<>(Arrays.asList(word)));
+            }
+        }
+        for(String w:wordSet) {
+            if(getAnagramsWithOneMoreLetter(w).size()>=MIN_NUM_ANAGRAMS)
+                wordList.add(w);
+        }
+        for(String w:wordList) {
+            int l = w.length();
+            if (sizeToWords.containsKey(l)){
+                sizeToWords.get(l).add(w);
+            } else {
+                sizeToWords.put(l,new ArrayList<String>(Arrays.asList(w)));
             }
         }
     }
@@ -58,7 +71,7 @@ public class AnagramDictionary {
     }
 
     public boolean isGoodWord(String word, String base) {
-        return true;
+        return wordSet.contains(word) && !word.startsWith(base) && !word.endsWith(base);
     }
 
     public List<String> getAnagrams(String targetWord) {
@@ -74,10 +87,30 @@ public class AnagramDictionary {
 
     public List<String> getAnagramsWithOneMoreLetter(String word) {
         ArrayList<String> result = new ArrayList<String>();
+        int n = word.length();
+        for(char c = 'a';c<='z';++c) {
+            String after = sortLetters(new StringBuffer(word+c).toString());
+//            System.out.println(String.format("after is %s", after));
+            if (lettersToWord.containsKey(after)) {
+//                System.out.println("have");
+                for(String w:lettersToWord.get(after)) {
+                    if (!w.startsWith(word) && !w.endsWith(word)){
+                        result.add(w);
+//                        System.out.println(w);
+                    }
+                }
+            }
+        }
         return result;
     }
 
     public String pickGoodStarterWord() {
+        while(!sizeToWords.containsKey(wordLength) && wordLength<MAX_WORD_LENGTH)
+            wordLength++;
+        if(sizeToWords.containsKey(wordLength)) {
+            ArrayList<String> dict = sizeToWords.get(wordLength++);
+            return dict.get(new Random().nextInt(dict.size()));
+        }
         return "stop";
     }
 }
